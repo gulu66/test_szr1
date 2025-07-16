@@ -1,6 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
+// fetchWithTimeout 工具函数
+function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 8000 } = options;
+  return Promise.race([
+    fetch(resource, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('请求超时')), timeout)
+    )
+  ]);
+}
+
 function Login({ onLogin }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
@@ -15,16 +26,30 @@ function Login({ onLogin }) {
     e.preventDefault();
     setLoading(true);
     setError('');
-    // TODO: 接入后端鉴权
-    setTimeout(() => {
-      if (form.email && form.password) {
-        onLogin && onLogin();
-        navigate('/');
-      } else {
-        setError('邮箱和密码不能为空');
-      }
-      setLoading(false);
-    }, 600);
+    fetchWithTimeout('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password
+      }),
+      timeout: 8000
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          localStorage.setItem('userId', data.user.id); // 新增
+          onLogin && onLogin();
+          navigate('/');
+        } else {
+          setError(data.message);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || '网络错误');
+        setLoading(false);
+      });
   };
 
   return (

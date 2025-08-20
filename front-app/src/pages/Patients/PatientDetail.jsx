@@ -1,350 +1,262 @@
-import { useState, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-
-const mockRecord = [
-  { date: '2024-01-01', score: 25 },
-  { date: '2024-02-01', score: 27 },
-  { date: '2024-03-01', score: 29 },
-];
-
-// 模拟个性化回忆知识库数据
-const mockMemoryData = {
-  textMemories: [
-    { id: 1, title: '家庭信息', content: '有一个儿子叫李小明，在北京工作。有一个女儿叫李小红，在上海读书。', timestamp: '2024-01-15' },
-    { id: 2, title: '兴趣爱好', content: '喜欢下象棋，年轻时是厂里的象棋冠军。喜欢听京剧，特别是梅兰芳的唱段。', timestamp: '2024-01-20' },
-    { id: 3, title: '重要经历', content: '1960年代在钢铁厂工作，担任技术员。1980年代参与过国家重点工程。', timestamp: '2024-02-01' }
-  ],
-  imageMemories: [
-    { id: 1, title: '家庭照片', description: '与家人的合影', url: 'https://via.placeholder.com/300x200/4F46E5/FFFFFF?text=家庭照片', timestamp: '2024-01-10' },
-    { id: 2, title: '工作照片', description: '年轻时在工厂工作的照片', url: 'https://via.placeholder.com/300x200/10B981/FFFFFF?text=工作照片', timestamp: '2024-01-25' }
-  ]
-};
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 function PatientDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [patient, setPatient] = useState(null);
+  const [memories, setMemories] = useState([]);
+  const [images, setImages] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [memoryData, setMemoryData] = useState(mockMemoryData);
-  const [editingText, setEditingText] = useState({});
-  const [editingImage, setEditingImage] = useState({});
-  const fileInputRef = useRef(null);
+  const [editForm, setEditForm] = useState({});
+  const [showMemoryForm, setShowMemoryForm] = useState(false);
+  const [memoryForm, setMemoryForm] = useState({ title: '', content: '' });
+  const [editMemoryId, setEditMemoryId] = useState(null);
+  const [showImageForm, setShowImageForm] = useState(false);
+  const [imageForm, setImageForm] = useState({ title: '', description: '', url: '' });
+  const [editImageId, setEditImageId] = useState(null);
 
-  const handleEditText = (memoryId, content) => {
-    setEditingText(prev => ({ ...prev, [memoryId]: content }));
+  // 获取详情
+  useEffect(() => {
+    const userId = Number(localStorage.getItem('userId'));
+    fetch(`/api/patients/${id}?userId=${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        setPatient(data.patient);
+        setMemories(data.patient.memories || []);
+        setImages(data.patient.images || []);
+      });
+  }, [id]);
+
+  // 编辑基本信息
+  const handleEdit = () => {
+    setEditForm({ ...patient });
+    setIsEditing(true);
+  };
+  const handleEditChange = e => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+  const handleEditSave = () => {
+    fetch(`/api/patients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setPatient(data.patient);
+          setIsEditing(false);
+        } else {
+          alert('保存失败');
+        }
+      });
   };
 
-  const handleSaveText = (memoryId) => {
-    setMemoryData(prev => ({
-      ...prev,
-      textMemories: prev.textMemories.map(memory => 
-        memory.id === memoryId 
-          ? { ...memory, content: editingText[memoryId] }
-          : memory
-      )
-    }));
-    setEditingText(prev => {
-      const newState = { ...prev };
-      delete newState[memoryId];
-      return newState;
-    });
+  // 删除病人
+  const handleDelete = () => {
+    if (!window.confirm('确定要删除该病人吗？')) return;
+    const userId = Number(localStorage.getItem('userId'));
+    console.log('handleDelete: patient.id =', patient?.id, 'url id =', id, 'userId =', userId);
+    fetch(`/api/patients/${id}?userId=${userId}`, { method: 'DELETE' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('删除成功');
+          navigate('/patients');
+        } else {
+          alert('删除失败');
+        }
+      });
   };
 
-  const handleCancelText = (memoryId) => {
-    setEditingText(prev => {
-      const newState = { ...prev };
-      delete newState[memoryId];
-      return newState;
-    });
+  // 新增/编辑回忆
+  const openMemoryForm = (memory = null) => {
+    if (memory) {
+      setMemoryForm({ title: memory.title, content: memory.content });
+      setEditMemoryId(memory.id);
+    } else {
+      setMemoryForm({ title: '', content: '' });
+      setEditMemoryId(null);
+    }
+    setShowMemoryForm(true);
+  };
+  const handleMemoryFormChange = e => {
+    setMemoryForm({ ...memoryForm, [e.target.name]: e.target.value });
+  };
+  const handleMemoryFormSave = () => {
+    if (!memoryForm.title || !memoryForm.content) return alert('请填写完整');
+    const userId = Number(localStorage.getItem('userId'));
+    let newMemories;
+    if (editMemoryId) {
+      newMemories = memories.map(m => m.id === editMemoryId ? { ...m, ...memoryForm, userId } : { ...m, userId: m.userId ?? userId });
+    } else {
+      newMemories = [...memories.map(m => ({ ...m, userId: m.userId ?? userId })), { id: Date.now(), ...memoryForm, timestamp: new Date().toISOString().split('T')[0], patient_id: patient.id, userId }];
+    }
+    setMemories(newMemories);
+    setShowMemoryForm(false);
+    setEditMemoryId(null);
+    fetch(`/api/patients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memories: newMemories, userId })
+    }).then(res => res.json());
+  };
+  const handleMemoryDelete = idToDelete => {
+    if (!window.confirm('确定要删除该回忆吗？')) return;
+    const userId = Number(localStorage.getItem('userId'));
+    console.log('handleMemoryDelete: patient.id =', patient?.id, 'url id =', id, 'userId =', userId);
+    const newMemories = memories.filter(m => m.id !== idToDelete).map(m => ({ ...m, userId: m.userId ?? userId }));
+    setMemories(newMemories);
+    fetch(`/api/patients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memories: newMemories, userId })
+    }).then(res => res.json());
   };
 
-  const handleEditImage = (imageId, field, value) => {
-    setEditingImage(prev => ({ 
-      ...prev, 
-      [imageId]: { ...prev[imageId], [field]: value } 
-    }));
+  // 新增/编辑图片
+  const openImageForm = (img = null) => {
+    if (img) {
+      setImageForm({ title: img.title, description: img.description, url: img.url });
+      setEditImageId(img.id);
+    } else {
+      setImageForm({ title: '', description: '', url: '' });
+      setEditImageId(null);
+    }
+    setShowImageForm(true);
+  };
+  const handleImageFormChange = e => {
+    setImageForm({ ...imageForm, [e.target.name]: e.target.value });
+  };
+  const handleImageFormSave = () => {
+    if (!imageForm.title || !imageForm.url) return alert('请填写完整');
+    const userId = Number(localStorage.getItem('userId'));
+    let newImages;
+    if (editImageId) {
+      newImages = images.map(img => img.id === editImageId ? { ...img, ...imageForm, userId } : { ...img, userId: img.userId ?? userId });
+    } else {
+      newImages = [...images.map(img => ({ ...img, userId: img.userId ?? userId })), { id: Date.now(), ...imageForm, timestamp: new Date().toISOString().split('T')[0], patient_id: patient.id, userId }];
+    }
+    setImages(newImages);
+    setShowImageForm(false);
+    setEditImageId(null);
+    fetch(`/api/patients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images: newImages, userId })
+    }).then(res => res.json());
+  };
+  const handleImageDelete = idToDelete => {
+    if (!window.confirm('确定要删除该图片吗？')) return;
+    const userId = Number(localStorage.getItem('userId'));
+    console.log('handleImageDelete: patient.id =', patient?.id, 'url id =', id, 'userId =', userId);
+    const newImages = images.filter(img => img.id !== idToDelete).map(img => ({ ...img, userId: img.userId ?? userId }));
+    setImages(newImages);
+    fetch(`/api/patients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images: newImages, userId })
+    }).then(res => res.json());
   };
 
-  const handleSaveImage = (imageId) => {
-    setMemoryData(prev => ({
-      ...prev,
-      imageMemories: prev.imageMemories.map(image => 
-        image.id === imageId 
-          ? { ...image, ...editingImage[imageId] }
-          : image
-      )
-    }));
-    setEditingImage(prev => {
-      const newState = { ...prev };
-      delete newState[imageId];
-      return newState;
-    });
-  };
-
-  const handleCancelImage = (imageId) => {
-    setEditingImage(prev => {
-      const newState = { ...prev };
-      delete newState[imageId];
-      return newState;
-    });
-  };
-
-  const handleAddTextMemory = () => {
-    const newMemory = {
-      id: Date.now(),
-      title: '新回忆',
-      content: '',
-      timestamp: new Date().toISOString().split('T')[0]
-    };
-    setMemoryData(prev => ({
-      ...prev,
-      textMemories: [...prev.textMemories, newMemory]
-    }));
-    setEditingText(prev => ({ ...prev, [newMemory.id]: '' }));
-  };
-
-  const handleAddImageMemory = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
+  const handleImageFileChange = e => {
+    const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const newImage = {
-          id: Date.now(),
-          title: '新图片',
-          description: '',
-          url: e.target.result,
-          timestamp: new Date().toISOString().split('T')[0]
-        };
-        setMemoryData(prev => ({
-          ...prev,
-          imageMemories: [...prev.imageMemories, newImage]
-        }));
+      const reader = new window.FileReader();
+      reader.onload = (ev) => {
+        setImageForm(prev => ({ ...prev, url: ev.target.result }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleDeleteTextMemory = (memoryId) => {
-    setMemoryData(prev => ({
-      ...prev,
-      textMemories: prev.textMemories.filter(memory => memory.id !== memoryId)
-    }));
-  };
-
-  const handleDeleteImageMemory = (imageId) => {
-    setMemoryData(prev => ({
-      ...prev,
-      imageMemories: prev.imageMemories.filter(image => image.id !== imageId)
-    }));
-  };
+  if (!patient) return <div>加载中...</div>;
 
   return (
-    <div>
+    <div className="max-w-2xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">病人 #{id} 详情</h2>
-
-      {/* 基本信息示例 */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">基本信息</h3>
-        <p>姓名：张三</p>
-        <p>性别：男</p>
-        <p>年龄：70</p>
-      </section>
-
-      {/* 病史等 */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">病历病史</h3>
-        <p>2010 年诊断高血压，2020 年诊断轻度认知障碍 …</p>
-      </section>
-
-      {/* 个性化回忆知识库 */}
-      <section className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">个性化回忆知识库</h3>
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-          >
-            {isEditing ? '完成编辑' : '编辑模式'}
-          </button>
+      {isEditing ? (
+        <div className="space-y-2 mb-4">
+          <input name="name" value={editForm.name} onChange={handleEditChange} className="border px-2 py-1" placeholder="姓名" />
+          <select name="gender" value={editForm.gender} onChange={handleEditChange} className="border px-2 py-1">
+            <option value="男">男</option>
+            <option value="女">女</option>
+          </select>
+          <input name="age" type="number" value={editForm.age} onChange={handleEditChange} className="border px-2 py-1" placeholder="年龄" />
+          <input name="medicalHistory" value={editForm.medicalHistory} onChange={handleEditChange} className="border px-2 py-1" placeholder="病史" />
+          <button onClick={handleEditSave} className="bg-blue-600 text-white px-3 py-1 rounded">保存</button>
+          <button onClick={() => setIsEditing(false)} className="ml-2 px-3 py-1">取消</button>
         </div>
-
-        {/* 文本回忆 */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-md font-medium">文本回忆</h4>
-            {isEditing && (
-              <button
-                onClick={handleAddTextMemory}
-                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-              >
-                添加文本
-              </button>
-            )}
-          </div>
-          <div className="space-y-3">
-            {memoryData.textMemories.map((memory) => (
-              <div key={memory.id} className="bg-white p-4 rounded-lg shadow border">
-                <div className="flex justify-between items-start mb-2">
-                  <h5 className="font-medium text-gray-800">{memory.title}</h5>
-                  <div className="flex space-x-2">
-                    {isEditing && (
-                      <>
-                        <button
-                          onClick={() => handleEditText(memory.id, memory.content)}
-                          className="text-blue-600 text-sm hover:text-blue-800"
-                        >
-                          编辑
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTextMemory(memory.id)}
-                          className="text-red-600 text-sm hover:text-red-800"
-                        >
-                          删除
-                        </button>
-                      </>
-                    )}
-                    <span className="text-xs text-gray-500">{memory.timestamp}</span>
-                  </div>
+      ) : (
+        <div className="mb-4">
+          <p>姓名：{patient.name}</p>
+          <p>性别：{patient.gender}</p>
+          <p>年龄：{patient.age}</p>
+          <p>病史：{patient.medicalHistory}</p>
+          <button onClick={handleEdit} className="bg-blue-600 text-white px-3 py-1 rounded">编辑</button>
+          <button onClick={handleDelete} className="ml-2 bg-red-500 text-white px-3 py-1 rounded">删除</button>
+        </div>
+      )}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">回忆</h3>
+        {memories.length === 0 ? <p>暂无回忆</p> : (
+          <ul className="space-y-2">
+            {memories.map(m => (
+              <li key={m.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
+                <div>
+                  <div className="font-bold">{m.title}</div>
+                  <div>{m.content}</div>
                 </div>
-                {editingText[memory.id] !== undefined ? (
-                  <div className="space-y-2">
-                    <textarea
-                      value={editingText[memory.id]}
-                      onChange={(e) => handleEditText(memory.id, e.target.value)}
-                      className="w-full p-2 border rounded resize-none"
-                      rows="3"
-                    />
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleSaveText(memory.id)}
-                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                      >
-                        保存
-                      </button>
-                      <button
-                        onClick={() => handleCancelText(memory.id)}
-                        className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
-                      >
-                        取消
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-700">{memory.content}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 图片回忆 */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-md font-medium">图片回忆</h4>
-            {isEditing && (
-              <button
-                onClick={handleAddImageMemory}
-                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-              >
-                添加图片
-              </button>
-            )}
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {memoryData.imageMemories.map((image) => (
-              <div key={image.id} className="bg-white p-4 rounded-lg shadow border">
-                <div className="flex justify-between items-start mb-2">
-                  <h5 className="font-medium text-gray-800">{image.title}</h5>
-                  <div className="flex space-x-2">
-                    {isEditing && (
-                      <>
-                        <button
-                          onClick={() => handleEditImage(image.id, 'title', image.title)}
-                          className="text-blue-600 text-sm hover:text-blue-800"
-                        >
-                          编辑
-                        </button>
-                        <button
-                          onClick={() => handleDeleteImageMemory(image.id)}
-                          className="text-red-600 text-sm hover:text-red-800"
-                        >
-                          删除
-                        </button>
-                      </>
-                    )}
-                    <span className="text-xs text-gray-500">{image.timestamp}</span>
-                  </div>
+                <div>
+                  <button onClick={() => openMemoryForm(m)} className="text-blue-600 mr-2">编辑</button>
+                  <button onClick={() => handleMemoryDelete(m.id)} className="text-red-500">删除</button>
                 </div>
-                <img
-                  src={image.url}
-                  alt={image.title}
-                  className="w-full h-48 object-cover rounded mb-2"
-                />
-                {editingImage[image.id] ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={editingImage[image.id].title || image.title}
-                      onChange={(e) => handleEditImage(image.id, 'title', e.target.value)}
-                      className="w-full p-2 border rounded text-sm"
-                      placeholder="图片标题"
-                    />
-                    <textarea
-                      value={editingImage[image.id].description || image.description}
-                      onChange={(e) => handleEditImage(image.id, 'description', e.target.value)}
-                      className="w-full p-2 border rounded text-sm resize-none"
-                      rows="2"
-                      placeholder="图片描述"
-                    />
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleSaveImage(image.id)}
-                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                      >
-                        保存
-                      </button>
-                      <button
-                        onClick={() => handleCancelImage(image.id)}
-                        className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
-                      >
-                        取消
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-700 text-sm">{image.description}</p>
-                )}
-              </div>
+              </li>
             ))}
+          </ul>
+        )}
+        <button onClick={() => openMemoryForm()} className="mt-2 bg-green-600 text-white px-3 py-1 rounded">新增回忆</button>
+        {showMemoryForm && (
+          <div className="mt-2 p-3 border rounded bg-gray-50">
+            <input name="title" value={memoryForm.title} onChange={handleMemoryFormChange} className="border px-2 py-1 mr-2" placeholder="标题" />
+            <input name="content" value={memoryForm.content} onChange={handleMemoryFormChange} className="border px-2 py-1 mr-2" placeholder="内容" />
+            <button onClick={handleMemoryFormSave} className="bg-blue-600 text-white px-3 py-1 rounded">保存</button>
+            <button onClick={() => setShowMemoryForm(false)} className="ml-2 px-3 py-1">取消</button>
           </div>
-        </div>
-      </section>
-
-      {/* 认知得分折线图 */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">认知得分记录</h3>
-        <LineChart width={500} height={260} data={mockRecord}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis domain={[0, 30]} />
-          <Tooltip />
-          <Line type="monotone" dataKey="score" stroke="#8884d8" />
-        </LineChart>
-      </section>
-
-      <button className="bg-green-600 text-white px-4 py-2 rounded">
-        生成报告
-      </button>
+        )}
+      </div>
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">图片</h3>
+        {images.length === 0 ? <p>暂无图片</p> : (
+          <ul className="space-y-2">
+            {images.map(img => (
+              <li key={img.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
+                <div>
+                  <div className="font-bold">{img.title}</div>
+                  <div>{img.description}</div>
+                  <img src={img.url} alt={img.title} className="w-32 h-20 object-cover mt-1" />
+                </div>
+                <div>
+                  <button onClick={() => openImageForm(img)} className="text-blue-600 mr-2">编辑</button>
+                  <button onClick={() => handleImageDelete(img.id)} className="text-red-500">删除</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button onClick={() => openImageForm()} className="mt-2 bg-green-600 text-white px-3 py-1 rounded">新增图片</button>
+        {showImageForm && (
+          <div className="mt-2 p-3 border rounded bg-gray-50">
+            <input name="title" value={imageForm.title} onChange={handleImageFormChange} className="border px-2 py-1 mr-2" placeholder="标题" />
+            <input name="description" value={imageForm.description} onChange={handleImageFormChange} className="border px-2 py-1 mr-2" placeholder="描述" />
+            <input name="url" value={imageForm.url} onChange={handleImageFormChange} className="border px-2 py-1 mr-2" placeholder="图片URL（可上传或粘贴）" />
+            <input type="file" accept="image/*" onChange={handleImageFileChange} className="border px-2 py-1 mr-2" />
+            <button onClick={handleImageFormSave} className="bg-blue-600 text-white px-3 py-1 rounded">保存</button>
+            <button onClick={() => setShowImageForm(false)} className="ml-2 px-3 py-1">取消</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

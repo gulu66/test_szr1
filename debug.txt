@@ -1,0 +1,40 @@
+== Info: Host localhost:3000 was resolved.
+== Info: IPv6: ::1
+== Info: IPv4: 127.0.0.1
+== Info:   Trying [::1]:3000...
+== Info: Connected to localhost (::1) port 3000
+=> Send header, 142 bytes (0x8e)
+0000: POST /api/register HTTP/1.1
+001d: Host: localhost:3000
+0033: User-Agent: curl/8.7.1
+004b: Accept: */*
+0058: Content-Type: application/json
+0078: Content-Length: 71
+008c: 
+=> Send data, 71 bytes (0x47)
+0000: {"email":"newuser4@example.com","password":"123456","confirm":"1
+0040: 23456"}
+== Info: upload completely sent off: 71 bytes
+<= Recv header, 17 bytes (0x11)
+0000: HTTP/1.1 200 OK
+<= Recv header, 23 bytes (0x17)
+0000: X-Powered-By: Express
+<= Recv header, 32 bytes (0x20)
+0000: Access-Control-Allow-Origin: *
+<= Recv header, 47 bytes (0x2f)
+0000: Content-Type: application/json; charset=utf-8
+<= Recv header, 20 bytes (0x14)
+0000: Content-Length: 41
+<= Recv header, 42 bytes (0x2a)
+0000: ETag: W/"29-yvnu5quKbBmhLFOeu9UpiHSs50E"
+<= Recv header, 37 bytes (0x25)
+0000: Date: Wed, 16 Jul 2025 02:36:36 GMT
+<= Recv header, 24 bytes (0x18)
+0000: Connection: keep-alive
+<= Recv header, 23 bytes (0x17)
+0000: Keep-Alive: timeout=5
+<= Recv header, 2 bytes (0x2)
+0000: 
+<= Recv data, 41 bytes (0x29)
+0000: {"success":true,"message":"............"}
+== Info: Connection #0 to host localhost left intact

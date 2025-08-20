@@ -1,6 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
+// fetchWithTimeout 工具函数
+function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 8000 } = options;
+  return Promise.race([
+    fetch(resource, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('请求超时')), timeout)
+    )
+  ]);
+}
+
 function Register({ onRegister }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '', confirm: '' });
@@ -26,12 +37,31 @@ function Register({ onRegister }) {
       setLoading(false);
       return;
     }
-    // TODO: 调用注册接口
-    setTimeout(() => {
-      onRegister && onRegister();
-      navigate('/');
-      setLoading(false);
-    }, 800);
+    fetchWithTimeout('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password,
+        confirm: form.confirm
+      }),
+      timeout: 8000
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          localStorage.setItem('userId', data.user.id); // 新增
+          onRegister && onRegister();
+          navigate('/');
+        } else {
+          setError(data.message);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || '网络错误');
+        setLoading(false);
+      });
   };
 
   return (

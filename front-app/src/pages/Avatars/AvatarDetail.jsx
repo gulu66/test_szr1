@@ -1,654 +1,421 @@
-import { useState, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-
-// 模拟虚拟人数据
-const mockAvatarData = {
-  id: 1,
-  name: '医生虚拟人',
-  type: 'doctor',
-  description: '专业的医疗虚拟人，具备丰富的医学知识和临床经验，能够为病人提供专业的医疗咨询和健康指导。',
-  currentImage: 'image_1',
-  currentVoice: 'voice_1',
-  currentAgent: 'agent_1'
-};
-
-// 模拟亲属虚拟人数据
-const mockFamilyAvatarData = {
-  id: 2,
-  name: '亲属虚拟人',
-  type: 'family',
-  description: '模拟病人亲人的虚拟形象，提供情感支持和陪伴，帮助病人缓解孤独感和焦虑情绪。',
-  currentImage: 'family_image_1',
-  currentVoice: 'family_voice_1',
-  currentAgent: 'family_agent_1'
-};
-
-// 医生形象图片数据
-const doctorImageOptions = [
-  { id: 'image_1', name: '内科医生', url: 'https://via.placeholder.com/300x400/4F46E5/FFFFFF?text=内科医生', description: '中年男性医生，戴眼镜，穿着白大褂，专业严谨' },
-  { id: 'image_2', name: '外科医生', url: 'https://via.placeholder.com/300x400/10B981/FFFFFF?text=外科医生', description: '中年女性医生，自信表情，穿着手术服，技术精湛' },
-  { id: 'image_3', name: '儿科医生', url: 'https://via.placeholder.com/300x400/F59E0B/FFFFFF?text=儿科医生', description: '年轻男性医生，亲和力强，穿着彩色工作服，耐心细致' },
-  { id: 'image_4', name: '老年科医生', url: 'https://via.placeholder.com/300x400/EF4444/FFFFFF?text=老年科医生', description: '资深女性医生，温和笑容，穿着白大褂，经验丰富' }
-];
-
-// 亲属形象图片数据
-const familyImageOptions = [
-  { id: 'family_image_1', name: '儿子形象', url: 'https://via.placeholder.com/300x400/4F46E5/FFFFFF?text=儿子形象', description: '中年男性，温和表情，穿着休闲装，亲切关怀' },
-  { id: 'family_image_2', name: '女儿形象', url: 'https://via.placeholder.com/300x400/10B981/FFFFFF?text=女儿形象', description: '中年女性，温柔笑容，亲切形象，充满关爱' },
-  { id: 'family_image_3', name: '孙子形象', url: 'https://via.placeholder.com/300x400/F59E0B/FFFFFF?text=孙子形象', description: '年轻男性，活力充沛，阳光形象，充满朝气' },
-  { id: 'family_image_4', name: '孙女形象', url: 'https://via.placeholder.com/300x400/EF4444/FFFFFF?text=孙女形象', description: '年轻女性，甜美可爱，活泼形象，温馨陪伴' }
-];
-
-// 医生声音数据
-const doctorVoiceOptions = [
-  { id: 'voice_1', name: '专业男声', audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', description: '温和的男声，语速适中，专业严谨' },
-  { id: 'voice_2', name: '专业女声', audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', description: '清晰的女声，语调专业，权威感强' },
-  { id: 'voice_3', name: '年轻男声', audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', description: '年轻男声，活力充沛，亲和力强' },
-  { id: 'voice_4', name: '温和女声', audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', description: '温柔女声，语调柔和，耐心细致' }
-];
-
-// 亲属声音数据
-const familyVoiceOptions = [
-  { id: 'family_voice_1', name: '儿子声音', audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', description: '温和的男声，语速适中，亲切关怀' },
-  { id: 'family_voice_2', name: '女儿声音', audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', description: '温柔的女声，语调柔和，充满关爱' },
-  { id: 'family_voice_3', name: '孙子声音', audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', description: '年轻男声，活力充沛，充满朝气' },
-  { id: 'family_voice_4', name: '孙女声音', audioUrl: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', description: '甜美女声，语调轻快，活泼可爱' }
-];
-
-// 医生Agent数据
-const doctorAgentOptions = [
-  { id: 'agent_1', name: '内科专家', description: '擅长高血压、糖尿病、心脏病等慢性病管理和治疗' },
-  { id: 'agent_2', name: '神经科专家', description: '专注于认知障碍、阿尔茨海默病等神经系统疾病诊断和治疗' },
-  { id: 'agent_3', name: '康复科专家', description: '擅长康复训练、功能恢复和运动疗法指导' },
-  { id: 'agent_4', name: '心理咨询师', description: '提供心理健康评估、心理治疗和情绪管理指导' }
-];
-
-// 亲属Agent数据
-const familyAgentOptions = [
-  { id: 'family_agent_1', name: '关怀陪伴型', description: '专注于情感陪伴和日常关怀，提供温暖的家庭氛围' },
-  { id: 'family_agent_2', name: '生活照料型', description: '关注日常生活照料，提醒服药、饮食、运动等' },
-  { id: 'family_agent_3', name: '娱乐互动型', description: '提供娱乐活动，如聊天、游戏、音乐等互动' },
-  { id: 'family_agent_4', name: '心理支持型', description: '提供心理安慰和情绪支持，缓解孤独和焦虑' }
-];
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 function AvatarDetail() {
   const { id } = useParams();
-  
-  // 根据ID选择对应的虚拟人数据
-  const getAvatarData = () => {
-    if (id === '1') return mockAvatarData;
-    if (id === '2') return mockFamilyAvatarData;
-    return mockAvatarData; // 默认返回医生虚拟人
-  };
-  
-  const [avatarData, setAvatarData] = useState(getAvatarData());
+  const navigate = useNavigate();
+  const [avatar, setAvatar] = useState(null);
+  const [images, setImages] = useState([]);
+  const [voices, setVoices] = useState([]);
+  const [agents, setAgents] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(avatarData.currentImage);
-  const [selectedVoice, setSelectedVoice] = useState(avatarData.currentVoice);
-  const [selectedAgent, setSelectedAgent] = useState(avatarData.currentAgent);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [editingImage, setEditingImage] = useState({});
-  const [editingVoice, setEditingVoice] = useState({});
-  const [editingAgent, setEditingAgent] = useState({});
-  const audioRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const voiceFileInputRef = useRef(null);
+  const [editForm, setEditForm] = useState({});
+  const [showImageForm, setShowImageForm] = useState(false);
+  const [imageForm, setImageForm] = useState({ name: '', url: '', description: '' });
+  const [editImageId, setEditImageId] = useState(null);
+  const [showVoiceForm, setShowVoiceForm] = useState(false);
+  const [voiceForm, setVoiceForm] = useState({ name: '', audio_url: '', description: '' });
+  const [editVoiceId, setEditVoiceId] = useState(null);
+  const [showAgentForm, setShowAgentForm] = useState(false);
+  const [agentForm, setAgentForm] = useState({ name: '', description: '' });
+  const [editAgentId, setEditAgentId] = useState(null);
 
-  const handleImageChange = (imageId) => {
-    setSelectedImage(imageId);
+  // 获取详情
+  useEffect(() => {
+    fetch(`/api/avatars/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        setAvatar(data.avatar);
+        setImages(data.images || []);
+        setVoices(data.voices || []);
+        setAgents(data.agents || []);
+      });
+  }, [id]);
+
+  // 编辑基本信息
+  const handleEdit = () => {
+    setEditForm({ ...avatar });
+    setIsEditing(true);
+  };
+  const handleEditChange = e => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+  const handleEditSave = () => {
+    fetch(`/api/avatars/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // 保存后重新获取详情，确保所有数据刷新
+          fetch(`/api/avatars/${id}`)
+            .then(res => res.json())
+            .then(data => {
+              setAvatar(data.avatar);
+              setImages(data.images || []);
+              setVoices(data.voices || []);
+              setAgents(data.agents || []);
+              setIsEditing(false);
+            });
+        } else {
+          alert('保存失败');
+        }
+      });
   };
 
-  const handleVoiceChange = (voiceId) => {
-    setSelectedVoice(voiceId);
+  // 删除虚拟人
+  const handleDelete = () => {
+    if (!window.confirm('确定要删除该虚拟人吗？')) return;
+    fetch(`/api/avatars/${id}`, { method: 'DELETE' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('删除成功');
+          navigate('/avatars');
+        } else {
+          alert('删除失败');
+        }
+      });
   };
 
-  const handleAgentChange = (agentId) => {
-    setSelectedAgent(agentId);
-  };
-
-  const handleSaveChanges = () => {
-    setAvatarData(prev => ({
-      ...prev,
-      currentImage: selectedImage,
-      currentVoice: selectedVoice,
-      currentAgent: selectedAgent
-    }));
-    setIsEditing(false);
-  };
-
-  const handleCancelChanges = () => {
-    setSelectedImage(avatarData.currentImage);
-    setSelectedVoice(avatarData.currentVoice);
-    setSelectedAgent(avatarData.currentAgent);
-    setEditingImage({});
-    setEditingVoice({});
-    setEditingAgent({});
-    setIsEditing(false);
-  };
-
-  const handleEditImage = (imageId, field, value) => {
-    setEditingImage(prev => ({ 
-      ...prev, 
-      [imageId]: { ...prev[imageId], [field]: value } 
-    }));
-  };
-
-  const handleSaveImage = (imageId) => {
-    // 这里可以添加保存到后端的逻辑
-    console.log('保存形象修改:', editingImage[imageId]);
-    setEditingImage(prev => {
-      const newState = { ...prev };
-      delete newState[imageId];
-      return newState;
-    });
-  };
-
-  const handleCancelImage = (imageId) => {
-    setEditingImage(prev => {
-      const newState = { ...prev };
-      delete newState[imageId];
-      return newState;
-    });
-  };
-
-  const handleEditVoice = (voiceId, field, value) => {
-    setEditingVoice(prev => ({ 
-      ...prev, 
-      [voiceId]: { ...prev[voiceId], [field]: value } 
-    }));
-  };
-
-  const handleSaveVoice = (voiceId) => {
-    // 这里可以添加保存到后端的逻辑
-    console.log('保存声音修改:', editingVoice[voiceId]);
-    setEditingVoice(prev => {
-      const newState = { ...prev };
-      delete newState[voiceId];
-      return newState;
-    });
-  };
-
-  const handleCancelVoice = (voiceId) => {
-    setEditingVoice(prev => {
-      const newState = { ...prev };
-      delete newState[voiceId];
-      return newState;
-    });
-  };
-
-  const handleEditAgent = (agentId, field, value) => {
-    setEditingAgent(prev => ({ 
-      ...prev, 
-      [agentId]: { ...prev[agentId], [field]: value } 
-    }));
-  };
-
-  const handleSaveAgent = (agentId) => {
-    // 这里可以添加保存到后端的逻辑
-    console.log('保存Agent修改:', editingAgent[agentId]);
-    setEditingAgent(prev => {
-      const newState = { ...prev };
-      delete newState[agentId];
-      return newState;
-    });
-  };
-
-  const handleCancelAgent = (agentId) => {
-    setEditingAgent(prev => {
-      const newState = { ...prev };
-      delete newState[agentId];
-      return newState;
-    });
-  };
-
-  const handlePlayVoice = (audioUrl) => {
-    if (audioRef.current) {
-      audioRef.current.src = audioUrl;
-      audioRef.current.play();
-      setIsPlaying(true);
+  // 新增/编辑图片
+  const openImageForm = (img = null) => {
+    if (img) {
+      setImageForm({ name: img.name, url: img.url, description: img.description });
+      setEditImageId(img.id);
+    } else {
+      setImageForm({ name: '', url: '', description: '' });
+      setEditImageId(null);
     }
+    setShowImageForm(true);
   };
-
-  const handleStopVoice = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setIsPlaying(false);
+  const handleImageFormChange = e => {
+    setImageForm({ ...imageForm, [e.target.name]: e.target.value });
+  };
+  const handleImageFormSave = () => {
+    if (!imageForm.name || !imageForm.url) return alert('请填写完整');
+    let newImages;
+    if (editImageId) {
+      newImages = images.map(img => img.id === editImageId ? { ...img, ...imageForm, avatar_id: Number(id) } : { ...img, avatar_id: img.avatar_id ?? Number(id) });
+    } else {
+      newImages = [...images.map(img => ({ ...img, avatar_id: img.avatar_id ?? Number(id) })), { id: Date.now(), ...imageForm, avatar_id: Number(id) }];
     }
+    setImages(newImages);
+    setShowImageForm(false);
+    setEditImageId(null);
+    fetch(`/api/avatars/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images: newImages })
+    }).then(res => res.json())
+      .then(() => {
+        fetch(`/api/avatars/${id}`)
+          .then(res => res.json())
+          .then(data => {
+            setAvatar(data.avatar);
+            setImages(data.images || []);
+            setVoices(data.voices || []);
+            setAgents(data.agents || []);
+          });
+      });
+  };
+  const handleImageDelete = idToDelete => {
+    if (!window.confirm('确定要删除该图片吗？')) return;
+    const newImages = images.filter(img => img.id !== idToDelete).map(img => ({ ...img, avatar_id: img.avatar_id ?? Number(id) }));
+    setImages(newImages);
+    fetch(`/api/avatars/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images: newImages })
+    }).then(res => res.json())
+      .then(() => {
+        fetch(`/api/avatars/${id}`)
+          .then(res => res.json())
+          .then(data => {
+            setAvatar(data.avatar);
+            setImages(data.images || []);
+            setVoices(data.voices || []);
+            setAgents(data.agents || []);
+          });
+      });
   };
 
-  const handleUploadImage = (event) => {
-    const file = event.target.files[0];
+  const handleImageFileChange = e => {
+    const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const newImage = {
-          id: `custom_${Date.now()}`,
-          name: '自定义形象',
-          url: e.target.result,
-          description: '用户上传的自定义形象'
-        };
-        const imageOptions = avatarData.type === 'doctor' ? doctorImageOptions : familyImageOptions;
-        imageOptions.push(newImage);
-        setSelectedImage(newImage.id);
+      const reader = new window.FileReader();
+      reader.onload = (ev) => {
+        setImageForm(prev => ({ ...prev, url: ev.target.result }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleUploadVoice = (event) => {
-    const file = event.target.files[0];
+  // 新增/编辑声音
+  const openVoiceForm = (voice = null) => {
+    if (voice) {
+      setVoiceForm({ name: voice.name, audio_url: voice.audio_url, description: voice.description });
+      setEditVoiceId(voice.id);
+    } else {
+      setVoiceForm({ name: '', audio_url: '', description: '' });
+      setEditVoiceId(null);
+    }
+    setShowVoiceForm(true);
+  };
+  const handleVoiceFormChange = e => {
+    setVoiceForm({ ...voiceForm, [e.target.name]: e.target.value });
+  };
+  const handleVoiceFormSave = () => {
+    if (!voiceForm.name || !voiceForm.audio_url) return alert('请填写完整');
+    let newVoices;
+    if (editVoiceId) {
+      newVoices = voices.map(v => v.id === editVoiceId ? { ...v, ...voiceForm, avatar_id: Number(id) } : { ...v, avatar_id: v.avatar_id ?? Number(id) });
+    } else {
+      newVoices = [...voices.map(v => ({ ...v, avatar_id: v.avatar_id ?? Number(id) })), { id: Date.now(), ...voiceForm, avatar_id: Number(id) }];
+    }
+    // 过滤掉无效项，id 唯一
+    newVoices = newVoices.filter(v => v.name && v.audio_url);
+    const idSet = new Set();
+    newVoices = newVoices.filter(v => {
+      if (idSet.has(v.id)) return false;
+      idSet.add(v.id);
+      return true;
+    });
+    setVoices(newVoices);
+    setShowVoiceForm(false);
+    setEditVoiceId(null);
+    fetch(`/api/avatars/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voices: newVoices })
+    }).then(res => res.json())
+      .then(() => {
+        fetch(`/api/avatars/${id}`)
+          .then(res => res.json())
+          .then(data => {
+            setAvatar(data.avatar);
+            setImages(data.images || []);
+            setVoices(data.voices || []);
+            setAgents(data.agents || []);
+            console.log('voices after update:', data.voices);
+          });
+      });
+  };
+  const handleVoiceDelete = idToDelete => {
+    if (!window.confirm('确定要删除该声音吗？')) return;
+    let newVoices = voices.filter(v => v.id !== idToDelete).map(v => ({ ...v, avatar_id: v.avatar_id ?? Number(id) }));
+    // 过滤掉无效项，id 唯一
+    newVoices = newVoices.filter(v => v.name && v.audio_url);
+    const idSet = new Set();
+    newVoices = newVoices.filter(v => {
+      if (idSet.has(v.id)) return false;
+      idSet.add(v.id);
+      return true;
+    });
+    setVoices(newVoices);
+    fetch(`/api/avatars/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voices: newVoices })
+    }).then(res => res.json())
+      .then(() => {
+        fetch(`/api/avatars/${id}`)
+          .then(res => res.json())
+          .then(data => {
+            setAvatar(data.avatar);
+            setImages(data.images || []);
+            setVoices(data.voices || []);
+            setAgents(data.agents || []);
+            console.log('voices after delete:', data.voices);
+          });
+      });
+  };
+
+  const handleVoiceFileChange = e => {
+    const file = e.target.files[0];
     if (file) {
       const audioUrl = URL.createObjectURL(file);
-      const newVoice = {
-        id: `custom_voice_${Date.now()}`,
-        name: '自定义声音',
-        audioUrl: audioUrl,
-        description: '用户上传的自定义声音'
-      };
-      const voiceOptions = avatarData.type === 'doctor' ? doctorVoiceOptions : familyVoiceOptions;
-      voiceOptions.push(newVoice);
-      setSelectedVoice(newVoice.id);
+      setVoiceForm(prev => ({ ...prev, audio_url: audioUrl }));
     }
   };
 
-  const getCurrentImage = () => {
-    const imageOptions = avatarData.type === 'doctor' ? doctorImageOptions : familyImageOptions;
-    return imageOptions.find(img => img.id === selectedImage) || imageOptions[0];
+  // 新增/编辑Agent
+  const openAgentForm = (agent = null) => {
+    if (agent) {
+      setAgentForm({ name: agent.name, description: agent.description });
+      setEditAgentId(agent.id);
+    } else {
+      setAgentForm({ name: '', description: '' });
+      setEditAgentId(null);
+    }
+    setShowAgentForm(true);
+  };
+  const handleAgentFormChange = e => {
+    setAgentForm({ ...agentForm, [e.target.name]: e.target.value });
+  };
+  const handleAgentFormSave = () => {
+    if (!agentForm.name) return alert('请填写完整');
+    let newAgents;
+    if (editAgentId) {
+      newAgents = agents.map(a => a.id === editAgentId ? { ...a, ...agentForm } : a);
+    } else {
+      newAgents = [...agents, { id: Date.now(), ...agentForm }];
+    }
+    setAgents(newAgents);
+    setShowAgentForm(false);
+    setEditAgentId(null);
+    // 同步到后端
+    fetch(`/api/avatars/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_agent: agentForm.name })
+    }).then(res => res.json())
+      .then(() => {
+        fetch(`/api/avatars/${id}`)
+          .then(res => res.json())
+          .then(data => {
+            setAvatar(data.avatar);
+            setImages(data.images || []);
+            setVoices(data.voices || []);
+            setAgents(data.agents || []);
+          });
+      });
+  };
+  const handleAgentDelete = id => {
+    if (!window.confirm('确定要删除该Agent吗？')) return;
+    const remain = agents.filter(a => a.id !== id);
+    setAgents(remain);
+    // 同步到后端（删除后传空）
+    fetch(`/api/avatars/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_agent: '' })
+    }).then(res => res.json())
+      .then(() => {
+        fetch(`/api/avatars/${id}`)
+          .then(res => res.json())
+          .then(data => {
+            setAvatar(data.avatar);
+            setImages(data.images || []);
+            setVoices(data.voices || []);
+            setAgents(data.agents || []);
+          });
+      });
   };
 
-  const getCurrentVoice = () => {
-    const voiceOptions = avatarData.type === 'doctor' ? doctorVoiceOptions : familyVoiceOptions;
-    return voiceOptions.find(voice => voice.id === selectedVoice) || voiceOptions[0];
-  };
-
-  const getCurrentAgent = () => {
-    const agentOptions = avatarData.type === 'doctor' ? doctorAgentOptions : familyAgentOptions;
-    return agentOptions.find(agent => agent.id === selectedAgent) || agentOptions[0];
-  };
+  if (!avatar) return <div>加载中...</div>;
 
   return (
-    <div>
+    <div className="max-w-2xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">虚拟人 #{id} 详情</h2>
-
-      {/* 基本信息 */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">基本信息</h3>
-        <p>名称：{avatarData.name}</p>
-        <p>描述：{avatarData.description}</p>
-      </section>
-
-      {/* 形象图片预览和选择 */}
-      <section className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">形象图片</h3>
-          {isEditing && (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-            >
-              上传新形象
-            </button>
-          )}
+      {isEditing ? (
+        <div className="space-y-2 mb-4">
+          <input name="name" value={editForm.name} onChange={handleEditChange} className="border px-2 py-1" placeholder="名称" />
+          <input name="description" value={editForm.description} onChange={handleEditChange} className="border px-2 py-1" placeholder="描述" />
+          <button onClick={handleEditSave} className="bg-blue-600 text-white px-3 py-1 rounded">保存</button>
+          <button onClick={() => setIsEditing(false)} className="ml-2 px-3 py-1">取消</button>
         </div>
-        
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleUploadImage}
-          className="hidden"
-        />
-        
-        <input
-          ref={voiceFileInputRef}
-          type="file"
-          accept="audio/*"
-          onChange={handleUploadVoice}
-          className="hidden"
-        />
-
-        {/* 当前形象预览 */}
+      ) : (
         <div className="mb-4">
-          <h4 className="text-md font-medium mb-2">当前形象</h4>
-          <div className="bg-white p-4 rounded-lg shadow border">
-            <img
-              src={getCurrentImage().url}
-              alt={getCurrentImage().name}
-              className="w-48 h-64 object-cover rounded mb-2"
-            />
-            <h5 className="font-medium text-gray-800">{getCurrentImage().name}</h5>
-            <p className="text-gray-600 text-sm">{getCurrentImage().description}</p>
-          </div>
+          <p>名称：{avatar.name}</p>
+          <p>描述：{avatar.description}</p>
+          <button onClick={handleEdit} className="bg-blue-600 text-white px-3 py-1 rounded">编辑</button>
+          <button onClick={handleDelete} className="ml-2 bg-red-500 text-white px-3 py-1 rounded">删除</button>
         </div>
-
-        {/* 形象选择 */}
-        {isEditing && (
-          <div>
-            <h4 className="text-md font-medium mb-2">选择形象</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {(avatarData.type === 'doctor' ? doctorImageOptions : familyImageOptions).map((image) => (
-                <div
-                  key={image.id}
-                  className={`bg-white p-3 rounded-lg shadow border cursor-pointer transition-all ${
-                    selectedImage === image.id ? 'ring-2 ring-blue-500' : 'hover:shadow-md'
-                  }`}
-                  onClick={() => handleImageChange(image.id)}
-                >
-                  <img
-                    src={image.url}
-                    alt={image.name}
-                    className="w-full h-32 object-cover rounded mb-2"
-                  />
-                  {editingImage[image.id] ? (
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={editingImage[image.id].name || image.name}
-                        onChange={(e) => handleEditImage(image.id, 'name', e.target.value)}
-                        className="w-full p-1 border rounded text-sm"
-                        placeholder="形象名称"
-                      />
-                      <textarea
-                        value={editingImage[image.id].description || image.description}
-                        onChange={(e) => handleEditImage(image.id, 'description', e.target.value)}
-                        className="w-full p-1 border rounded text-xs resize-none"
-                        rows="2"
-                        placeholder="形象描述"
-                      />
-                      <div className="flex space-x-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSaveImage(image.id);
-                          }}
-                          className="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700"
-                        >
-                          保存
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCancelImage(image.id);
-                          }}
-                          className="bg-gray-600 text-white px-2 py-1 rounded text-xs hover:bg-gray-700"
-                        >
-                          取消
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <h5 className="font-medium text-gray-800 text-sm">{image.name}</h5>
-                      <p className="text-gray-600 text-xs">{image.description}</p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditImage(image.id, 'name', image.name);
-                        }}
-                        className="text-blue-600 text-xs hover:text-blue-800 mt-1"
-                      >
-                        编辑
-                      </button>
-                    </div>
-                  )}
+      )}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">形象图片</h3>
+        {images.length === 0 ? <p>暂无图片</p> : (
+          <ul className="space-y-2">
+            {images.map(img => (
+              <li key={img.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
+                <div>
+                  <div className="font-bold">{img.name}</div>
+                  <div>{img.description}</div>
+                  <img src={img.url} alt={img.name} className="w-32 h-20 object-cover mt-1" />
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* 声音预览和选择 */}
-      <section className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">声音</h3>
-          {isEditing && (
-            <button
-              onClick={() => voiceFileInputRef.current?.click()}
-              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-            >
-              上传新声音
-            </button>
-          )}
-        </div>
-        
-        {/* 当前声音预览 */}
-        <div className="mb-4">
-          <h4 className="text-md font-medium mb-2">当前声音</h4>
-          <div className="bg-white p-4 rounded-lg shadow border">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => handlePlayVoice(getCurrentVoice().audioUrl)}
-                disabled={isPlaying}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
-              >
-                {isPlaying ? '播放中...' : '播放'}
-              </button>
-              {isPlaying && (
-                <button
-                  onClick={handleStopVoice}
-                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                >
-                  停止
-                </button>
-              )}
-              <div>
-                <h5 className="font-medium text-gray-800">{getCurrentVoice().name}</h5>
-                <p className="text-gray-600 text-sm">{getCurrentVoice().description}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 声音选择 */}
-        {isEditing && (
-          <div>
-            <h4 className="text-md font-medium mb-2">选择声音</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(avatarData.type === 'doctor' ? doctorVoiceOptions : familyVoiceOptions).map((voice) => (
-                <div
-                  key={voice.id}
-                  className={`bg-white p-4 rounded-lg shadow border cursor-pointer transition-all ${
-                    selectedVoice === voice.id ? 'ring-2 ring-blue-500' : 'hover:shadow-md'
-                  }`}
-                  onClick={() => handleVoiceChange(voice.id)}
-                >
-                  {editingVoice[voice.id] ? (
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={editingVoice[voice.id].name || voice.name}
-                        onChange={(e) => handleEditVoice(voice.id, 'name', e.target.value)}
-                        className="w-full p-2 border rounded"
-                        placeholder="声音名称"
-                      />
-                      <textarea
-                        value={editingVoice[voice.id].description || voice.description}
-                        onChange={(e) => handleEditVoice(voice.id, 'description', e.target.value)}
-                        className="w-full p-2 border rounded resize-none"
-                        rows="2"
-                        placeholder="声音描述"
-                      />
-                      <div className="flex items-center justify-between">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSaveVoice(voice.id);
-                            }}
-                            className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                          >
-                            保存
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCancelVoice(voice.id);
-                            }}
-                            className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
-                          >
-                            取消
-                          </button>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlayVoice(voice.audioUrl);
-                          }}
-                          className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
-                        >
-                          试听
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium text-gray-800">{voice.name}</h5>
-                        <p className="text-gray-600 text-sm">{voice.description}</p>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditVoice(voice.id, 'name', voice.name);
-                          }}
-                          className="text-blue-600 text-sm hover:text-blue-800 mt-1"
-                        >
-                          编辑
-                        </button>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePlayVoice(voice.audioUrl);
-                        }}
-                        className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
-                      >
-                        试听
-                      </button>
-                    </div>
-                  )}
+                <div>
+                  <button onClick={() => openImageForm(img)} className="text-blue-600 mr-2">编辑</button>
+                  <button onClick={() => handleImageDelete(img.id)} className="text-red-500">删除</button>
                 </div>
-              ))}
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
         )}
-      </section>
-
-      {/* Agent选择 */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">{avatarData.type === 'doctor' ? '专业领域' : '陪伴类型'}</h3>
-        
-        {/* 当前Agent信息 */}
-        <div className="mb-4">
-          <h4 className="text-md font-medium mb-2">当前{avatarData.type === 'doctor' ? '专业领域' : '陪伴类型'}</h4>
-          <div className="bg-white p-4 rounded-lg shadow border">
-            <h5 className="font-medium text-gray-800">{getCurrentAgent().name}</h5>
-            <p className="text-gray-600 text-sm">{getCurrentAgent().description}</p>
+        <button onClick={() => openImageForm()} className="mt-2 bg-green-600 text-white px-3 py-1 rounded">新增图片</button>
+        {showImageForm && (
+          <div className="mt-2 p-3 border rounded bg-gray-50">
+            <input name="name" value={imageForm.name} onChange={handleImageFormChange} className="border px-2 py-1 mr-2" placeholder="名称" />
+            <input name="description" value={imageForm.description} onChange={handleImageFormChange} className="border px-2 py-1 mr-2" placeholder="描述" />
+            <input name="url" value={imageForm.url} onChange={handleImageFormChange} className="border px-2 py-1 mr-2" placeholder="图片URL（可上传或粘贴）" />
+            <input type="file" accept="image/*" onChange={handleImageFileChange} className="border px-2 py-1 mr-2" />
+            <button onClick={handleImageFormSave} className="bg-blue-600 text-white px-3 py-1 rounded">保存</button>
+            <button onClick={() => setShowImageForm(false)} className="ml-2 px-3 py-1">取消</button>
           </div>
-        </div>
-
-        {/* Agent选择 */}
-        {isEditing && (
-          <div>
-            <h4 className="text-md font-medium mb-2">选择{avatarData.type === 'doctor' ? '专业领域' : '陪伴类型'}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(avatarData.type === 'doctor' ? doctorAgentOptions : familyAgentOptions).map((agent) => (
-                <div
-                  key={agent.id}
-                  className={`bg-white p-4 rounded-lg shadow border cursor-pointer transition-all ${
-                    selectedAgent === agent.id ? 'ring-2 ring-blue-500' : 'hover:shadow-md'
-                  }`}
-                  onClick={() => handleAgentChange(agent.id)}
-                >
-                  {editingAgent[agent.id] ? (
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={editingAgent[agent.id].name || agent.name}
-                        onChange={(e) => handleEditAgent(agent.id, 'name', e.target.value)}
-                        className="w-full p-2 border rounded"
-                        placeholder="名称"
-                      />
-                      <textarea
-                        value={editingAgent[agent.id].description || agent.description}
-                        onChange={(e) => handleEditAgent(agent.id, 'description', e.target.value)}
-                        className="w-full p-2 border rounded resize-none"
-                        rows="3"
-                        placeholder="描述"
-                      />
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSaveAgent(agent.id);
-                          }}
-                          className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                        >
-                          保存
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCancelAgent(agent.id);
-                          }}
-                          className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
-                        >
-                          取消
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <h5 className="font-medium text-gray-800">{agent.name}</h5>
-                      <p className="text-gray-600 text-sm">{agent.description}</p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditAgent(agent.id, 'name', agent.name);
-                        }}
-                        className="text-blue-600 text-sm hover:text-blue-800 mt-2"
-                      >
-                        编辑
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* 编辑控制按钮 */}
-      <div className="flex space-x-4">
-        {!isEditing ? (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-          >
-            编辑设置
-          </button>
-        ) : (
-          <>
-            <button
-              onClick={handleSaveChanges}
-              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-            >
-              保存更改
-            </button>
-            <button
-              onClick={handleCancelChanges}
-              className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700"
-            >
-              取消
-            </button>
-          </>
         )}
       </div>
-
-      {/* 音频元素 */}
-      <audio ref={audioRef} onEnded={() => setIsPlaying(false)} />
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">声音</h3>
+        {console.log('voices render:', voices)}
+        {voices.length === 0 ? <p>暂无声音</p> : (
+          <ul className="space-y-2">
+            {voices.map(voice => (
+              <li key={voice.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
+                <div>
+                  <div className="font-bold">{voice.name}</div>
+                  <div>{voice.description}</div>
+                  <audio src={voice.audio_url} controls className="mt-1" />
+                </div>
+                <div>
+                  <button onClick={() => openVoiceForm(voice)} className="text-blue-600 mr-2">编辑</button>
+                  <button onClick={() => handleVoiceDelete(voice.id)} className="text-red-500">删除</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button onClick={() => openVoiceForm()} className="mt-2 bg-green-600 text-white px-3 py-1 rounded">新增声音</button>
+        {showVoiceForm && (
+          <div className="mt-2 p-3 border rounded bg-gray-50">
+            <input name="name" value={voiceForm.name} onChange={handleVoiceFormChange} className="border px-2 py-1 mr-2" placeholder="名称" />
+            <input name="description" value={voiceForm.description} onChange={handleVoiceFormChange} className="border px-2 py-1 mr-2" placeholder="描述" />
+            <input name="audio_url" value={voiceForm.audio_url} onChange={handleVoiceFormChange} className="border px-2 py-1 mr-2" placeholder="音频URL（可上传或粘贴）" />
+            <input type="file" accept="audio/*" onChange={handleVoiceFileChange} className="border px-2 py-1 mr-2" />
+            <button onClick={handleVoiceFormSave} className="bg-blue-600 text-white px-3 py-1 rounded">保存</button>
+            <button onClick={() => setShowVoiceForm(false)} className="ml-2 px-3 py-1">取消</button>
+          </div>
+        )}
+      </div>
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">Agent</h3>
+        {agents.length === 0 ? <p>暂无Agent</p> : (
+          <ul className="space-y-2">
+            {agents.map(agent => (
+              <li key={agent.id} className="bg-white p-3 rounded shadow flex justify-between items-center">
+                <div>
+                  <div className="font-bold">{agent.name}</div>
+                  <div>{agent.description}</div>
+                </div>
+                <div>
+                  <button onClick={() => openAgentForm(agent)} className="text-blue-600 mr-2">编辑</button>
+                  <button onClick={() => handleAgentDelete(agent.id)} className="text-red-500">删除</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button onClick={() => openAgentForm()} className="mt-2 bg-green-600 text-white px-3 py-1 rounded">新增Agent</button>
+        {showAgentForm && (
+          <div className="mt-2 p-3 border rounded bg-gray-50">
+            <input name="name" value={agentForm.name} onChange={handleAgentFormChange} className="border px-2 py-1 mr-2" placeholder="名称" />
+            <input name="description" value={agentForm.description} onChange={handleAgentFormChange} className="border px-2 py-1 mr-2" placeholder="描述" />
+            <button onClick={handleAgentFormSave} className="bg-blue-600 text-white px-3 py-1 rounded">保存</button>
+            <button onClick={() => setShowAgentForm(false)} className="ml-2 px-3 py-1">取消</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

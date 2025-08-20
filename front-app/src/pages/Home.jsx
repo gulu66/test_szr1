@@ -1,23 +1,24 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 
 function Home() {
-  // 模拟统计数据
-  const stats = {
-    totalPatients: 12,
-    totalAvatars: 8,
-    doctorAvatars: 4,
-    familyAvatars: 4,
-    recentActivities: 5
-  };
+  const [stats, setStats] = useState({
+    totalPatients: 0,
+    totalAvatars: 0,
+    doctorAvatars: 0,
+    familyAvatars: 0
+  });
+  const [recentActivities, setRecentActivities] = useState([]);
 
-  // 模拟最近活动
-  const recentActivities = [
-    { id: 1, type: 'patient', action: '新增病人', name: '王五', time: '2小时前' },
-    { id: 2, type: 'avatar', action: '修改虚拟人', name: '医生虚拟人', time: '4小时前' },
-    { id: 3, type: 'patient', action: '更新回忆', name: '张三', time: '1天前' },
-    { id: 4, type: 'avatar', action: '上传声音', name: '亲属虚拟人', time: '2天前' },
-    { id: 5, type: 'patient', action: '添加图片', name: '李四', time: '3天前' }
-  ];
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    fetch(`/api/overview?userId=${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        setStats(data.stats || {});
+        setRecentActivities(data.recentActivities || []);
+      });
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -28,7 +29,6 @@ function Home() {
           为病人提供个性化关怀，为家属提供专业支持
         </p>
       </div>
-
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
@@ -44,7 +44,6 @@ function Home() {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
           <div className="flex items-center">
             <div className="p-3 bg-green-100 rounded-full">
@@ -58,7 +57,6 @@ function Home() {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
           <div className="flex items-center">
             <div className="p-3 bg-purple-100 rounded-full">
@@ -72,7 +70,6 @@ function Home() {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-pink-500">
           <div className="flex items-center">
             <div className="p-3 bg-pink-100 rounded-full">
@@ -87,7 +84,6 @@ function Home() {
           </div>
         </div>
       </div>
-
       {/* 快速操作 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* 病人管理 */}
